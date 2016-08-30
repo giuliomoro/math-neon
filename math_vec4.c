@@ -116,8 +116,10 @@ float dot4_neon_hfp(float v0[4], float v1[4])
 
 
 #ifdef __MATH_NEON
-float32_t dot4_neon(float32x4_t v0, float32x4_t v1)
+float dot4_neon(float _v0[4], float _v1[4])
 {	
+	float32x4_t v0 = {_v0[0],_v0[1],_v0[2],_v0[3]};
+	float32x4_t v1 = {_v1[0],_v1[1],_v1[2],_v1[3]};
 	float32x2_t a, b, c, d, r;
 	a = vget_high_f32(v0);
 	b = vget_low_f32(v0);
