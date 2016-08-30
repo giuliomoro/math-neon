@@ -2,3 +2,5 @@
 *.s
 *.i
 .*.swp
+*.a
+build/
