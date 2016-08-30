@@ -25,6 +25,10 @@ THE SOFTWARE.
 #ifndef __MATH_NEON_H__ 
 #define __MATH_NEON_H__ 
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #if !defined(__i386__) && defined(__arm__)
 //if defined neon ASM routines are used, otherwise all calls to *_neon 
 //functions are rerouted to their equivalent *_c function.
@@ -432,4 +436,7 @@ float 		invsqrtf_c(float x);
 float 		invsqrtf_neon_hfp(float x);
 float 		invsqrtf_neon_sfp(float x);
 
+#if defined(__cplusplus)
+} /* extern "C" */
+#endif
 #endif
