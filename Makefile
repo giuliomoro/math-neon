@@ -1,22 +1,28 @@
-CFLAGS := -O2 -mtune=cortex-a8 -mfloat-abi=hard -mfpu=neon -ansi -std=gnu99 -ftree-vectorize -ftree-vectorizer-verbose=10
+ifeq ($(CC),clang)
+  COMPILER_CFLAGS=-no-integrated-as
+  BUILD_FOLDER=./build_clang/
+else
+  COMPILER_CFLAGS=--fast-math
+  BUILD_FOLDER=./build_gcc/
+endif
+
+$(shell mkdir -p $(BUILD_FOLDER))
+CFLAGS := -O2 -mtune=cortex-a8 -mfloat-abi=hard -mfpu=neon -ansi -std=gnu99 -ftree-vectorize -I./ $(COMPILER_CFLAGS)
+TEST_CFLAGS := -I/usr/xenomai/include
 WARNINGS := -Wall -Wextra -Wno-unused-parameter -Wmissing-prototypes
 WARNINGS=
 ASSEMBLER := -Wa,-mimplicit-it=thumb
 CC=arm-linux-gnueabihf-gcc
 AR=arm-linux-gnueabihf-ar
-BUILD_FOLDER=./build/
 
 override CFLAGS += $(WARNINGS) $(ASSEMBLER)
-LIBS := -lm
+LIBS := -lm 
 
 lib: libmathneon.a
-
-all: math_debug
 
 C_SRCS := $(wildcard *.c)
 C_OBJS := $(addprefix $(BUILD_FOLDER),$(notdir $(C_SRCS:.c=.o)))
 C_DEPS := $(addprefix $(BUILD_FOLDER),$(notdir $(C_SRCS:.c=.d)))
-
 
 libmathneon.a: $(C_OBJS)
 #libmathneon.a: math_acosf.o math_ldexpf.o math_powf.o math_sqrtfv.o \
@@ -27,16 +33,23 @@ libmathneon.a: $(C_OBJS)
 	math_cosf.o math_frexpf.o math_mat4.o math_sinhf.o math_vec4.o \
 	math_coshf.o math_invsqrtf.o math_modf.o math_sqrtf.o
 
+SRCS = $(wildcard *.c)
+OBJS= $(addprefix $(BUILD_FOLDER),$(notdir $(SRCS:.c=.o)))
 
-math_debug: clean math_debug.o libmathneon.a #untested
-	$(CC) -ggdb $(LDFLAGS) -o $@ $^ $(LIBS)
+#$(warning $(SRCS) $(OBJS))
 
-$(BUILD_FOLDER)%.o:: %.c
-	$(CC) $(CFLAGS) -o $@ -c $<
+test: $(BUILD_FOLDER)test.o $(BUILD_FOLDER)libmathneon.a
+	$(CC) $(BUILD_FOLDER)test.o -o test_$(CC) $(LIBS) $(BUILD_FOLDER)libmathneon.a -lrt -lxenomai -lnative -L/usr/xenomai/lib
 
-%.a::
+$(BUILD_FOLDER)%.o: %.c
+	$(CC) $(TEST_CFLAGS) $(CFLAGS) -o $@ -c $< 
+
+%.a: $(OBJS)
 	$(AR) rcs $@ $^
 	@echo Successfully built $@
+
+math_debug: $(BUILD_FOLDER)math_debug.o $(BUILD_FOLDER)libmathneon.a #untested
+	$(CC) -ggdb $(LDFLAGS) -o $@_$(CC) $^ $(LIBS)
 
 clean:
 	$(RM) math_debug $(BUILD_FOLDER)*.o *.a

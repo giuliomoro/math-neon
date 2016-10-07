@@ -293,14 +293,14 @@ void test_vectorfunc()
 	v2t[1] = ru.ru_utime.tv_sec * 1000000 + ru.ru_utime.tv_usec;
 	for(int i=0;i < testnum; i++)
 	{
-		r = dot2_neon(v0, v1);
+		//r = dot2_neon(v0, v1);
 	};
 	getrusage(RUSAGE_SELF, &ru);	
 	v2t[2] = ru.ru_utime.tv_sec * 1000000 + ru.ru_utime.tv_usec;
 
 	r = dot2_c(v0, v1);
 	printf("dot2_c = %f\n", r);
-	r = dot2_neon(v0, v1);
+	//r = dot2_neon(v0, v1);
 	printf("dot2_neon = %f\n", r);
 	
 	printf("dot2: c=%i \t neon=%i \t rate=%.2f \n", v2t[1] - v2t[0], v2t[2] - v2t[1], 
@@ -344,14 +344,14 @@ void test_vectorfunc()
 	v3t[1] = ru.ru_utime.tv_sec * 1000000 + ru.ru_utime.tv_usec;
 	for(int i=0;i < testnum; i++)
 	{
-		r = dot3_neon(v0, v1);
+		//r = dot3_neon(v0, v1);
 	};
 	getrusage(RUSAGE_SELF, &ru);	
 	v3t[2] = ru.ru_utime.tv_sec * 1000000 + ru.ru_utime.tv_usec;
 
 	r = dot3_c(v0, v1);
 	printf("dot3_c = %f\n", r);
-	r = dot3_neon(v0, v1);
+	//r = dot3_neon(v0, v1);
 	printf("dot3_neon = %f\n", r);
 	
 	printf("dot3: c=%i \t neon=%i \t rate=%.2f \n", v3t[1] - v3t[0], v3t[2] - v3t[1], 
@@ -420,14 +420,14 @@ void test_vectorfunc()
 	v4t[1] = ru.ru_utime.tv_sec * 1000000 + ru.ru_utime.tv_usec;
 	for(int i=0;i < testnum; i++)
 	{
-		r = dot4_neon(v0, v1);
+		//r = dot4_neon(v0, v1);
 	};
 	getrusage(RUSAGE_SELF, &ru);	
 	v4t[2] = ru.ru_utime.tv_sec * 1000000 + ru.ru_utime.tv_usec;
 
 	r = dot4_c(v0, v1);
 	printf("dot4_c = %f\n", r);
-	r = dot4_neon(v0, v1);
+	//r = dot4_neon(v0, v1);
 	printf("dot4_neon = %f\n", r);
 	
 	printf("dot4: c=%i \t neon=%i \t rate=%.2f \n", v4t[1] - v4t[0], v4t[2] - v4t[1], 
@@ -683,14 +683,14 @@ int main(int argc, char** argv)
 		
 		ii = i - (i % 3);
 		printf("%s\t", test1[i].name);
-		printf("[%.2f, %.2f]\t", test1[i].rng0, test1[i].rng1);
+		printf("%.2f, %.2f\t", test1[i].rng0, test1[i].rng1);
 		printf("%i\t", test1[i].num);
-		printf("%.2e\t", test1[i].emaxabs);
-		printf("%.2e%%\t", test1[i].emaxrel);
-		printf("%.2e\t", test1[i].erms);
+		printf("%12.8f\t", test1[i].emaxabs);
+		printf("%12.8f\t", test1[i].emaxrel);
+		printf("%12.8f\t", test1[i].erms);
 		printf("%i\t", test1[i].time);
-		printf("x%.2f\t", (float)test1[ii].time / test1[i].time);
-		printf("\n");
+		printf("%.2f\t", (float)test1[ii].time / test1[i].time);
+		printf(";\n");
 	}
 	for(i = 0; i < 9; i++){
 		test_mathfunc2(&test2[i]);
@@ -698,14 +698,14 @@ int main(int argc, char** argv)
 		ii = i - (i % 3);
 		
 		printf("%s\t", test2[i].name);
-		printf("[%.2f, %.2f]\t", test2[i].rng0, test2[i].rng1);
+		printf("%.2f, %.2f\t", test2[i].rng0, test2[i].rng1);
 		printf("%i\t", test2[i].num);
-		printf("%.2e\t", test2[i].emaxabs);
-		printf("%.2e%%\t", test2[i].emaxrel);
-		printf("%.2e\t", test2[i].erms);
+		printf("%12.8f\t", test2[i].emaxabs);
+		printf("%12.8f\t", test2[i].emaxrel);
+		printf("%12.8f\t", test2[i].erms);
 		printf("%i\t", test2[i].time);
-		printf("x%.2f\t", (float)test2[ii].time / test2[i].time);
-		printf("\n");
+		printf("%.2f\t", (float)test2[ii].time / test2[i].time);
+		printf(";\n");
 	}
 	
 #else

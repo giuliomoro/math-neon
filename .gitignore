@@ -1,6 +1,10 @@
+
 *.o
 *.s
 *.i
 .*.swp
+.*.swo
 *.a
-build/
+build*/
+test_*
+math_debug_*
