@@ -37,9 +37,9 @@ SRCS = $(wildcard *.c)
 OBJS= $(addprefix $(BUILD_FOLDER),$(notdir $(SRCS:.c=.o)))
 
 #$(warning $(SRCS) $(OBJS))
-
+XENOMAI_LDLIBS=-lrt -lxenomai -lnative -L/usr/xenomai/lib
 test: $(BUILD_FOLDER)test.o $(BUILD_FOLDER)libmathneon.a
-	$(CC) $(BUILD_FOLDER)test.o -o test_$(CC) $(LIBS) $(BUILD_FOLDER)libmathneon.a -lrt -lxenomai -lnative -L/usr/xenomai/lib
+	$(CC) $(BUILD_FOLDER)test.o -o test_$(CC) $(LIBS) $(BUILD_FOLDER)libmathneon.a $(XENOMAI_LDLIBS)
 
 $(BUILD_FOLDER)%.o: %.c
 	$(CC) $(TEST_CFLAGS) $(CFLAGS) -o $@ -c $< 
@@ -48,8 +48,11 @@ $(BUILD_FOLDER)%.o: %.c
 	$(AR) rcs $@ $^
 	@echo Successfully built $@
 
-math_debug: $(BUILD_FOLDER)math_debug.o $(BUILD_FOLDER)libmathneon.a #untested
-	$(CC) -ggdb $(LDFLAGS) -o $@_$(CC) $^ $(LIBS)
+.PHONY: math_debug
+math_debug:math_debug_$(CC)
+
+math_debug_$(CC): $(BUILD_FOLDER)math_debug.o $(BUILD_FOLDER)libmathneon.a 
+	$(CC) -ggdb $(LDFLAGS) -o $@ $^ $(LIBS) $(TEST_CFLAGS) $(XENOMAI_LDLIBS)
 
 clean:
 	$(RM) math_debug $(BUILD_FOLDER)*.o *.a
