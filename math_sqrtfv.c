@@ -110,34 +110,38 @@ void sqrtfv_neon(float *x, int n, float *y)
 #ifdef __MATH_NEON
 	//assumes hard_float, multiples of four
 	asm volatile (
+	"vld1.32 		{d0, d1}, [%0]! 				\n\t"	//q0 = (*x[0], *x[1]), x+=2;
 	"lb: \n\t"
-	"vld1.32 		d0, [%0]! 				\n\t"	//d0 = (*x[0], *x[1]), x+=2;
 	
 	//fast invsqrt approx
-	"vmov.f32 		d1, d0					\n\t"	//d1 = d0
-	"vrsqrte.f32 	d0, d0					\n\t"	//d0 = ~ 1.0 / sqrt(d0)
-	"vmul.f32 		d2, d0, d1				\n\t"	//d3 = d0 * d2
-	"vrsqrts.f32 	d3, d2, d0				\n\t"	//d4 = (3 - d0 * d3) / 2 	
-	"vmul.f32 		d0, d0, d3				\n\t"	//d0 = d0 * d4	
-	"vmul.f32 		d2, d0, d1				\n\t"	//d3 = d0 * d2	
-	"vrsqrts.f32 	d3, d2, d0				\n\t"	//d4 = (3 - d0 * d3) / 2	
-	"vmul.f32 		d0, d0, d3				\n\t"	//d0 = d0 * d4	
+	"vmov.f32 		q1, q0					\n\t"	//q1 = q0
+	"vrsqrte.f32 	q0, q0					\n\t"	//q0 = ~ 1.0 / sqrt(q0)
+	"vmul.f32 		q2, q0, q1				\n\t"	//q3 = q0 * q2
+	"vrsqrts.f32 	q3, q2, q0				\n\t"	//q4 = (3 - q0 * q3) / 2 	
+	"vmul.f32 		q0, q0, q3				\n\t"	//q0 = q0 * q4	
+	"vmul.f32 		q2, q0, q1				\n\t"	//q3 = q0 * q2	
+	"vrsqrts.f32 	q3, q2, q0				\n\t"	//q4 = (3 - q0 * q3) / 2	
+	"vmul.f32 		q0, q0, q3				\n\t"	//q0 = q0 * q4	
 		
+	"subs 			%1, %1, #4				\n\t"	//n = n - 2; update flags
 	//fast reciporical approximation
-	"vrecpe.f32		d1, d0					\n\t"	//d1 = ~ 1 / d0; 
-	"vrecps.f32		d2, d1, d0				\n\t"	//d2 = 2.0 - d1 * d0; 
-	"vmul.f32		d1, d1, d2				\n\t"	//d1 = d1 * d2; 
-	"vrecps.f32		d2, d1, d0				\n\t"	//d2 = 2.0 - d1 * d0; 
-	"vmul.f32		d0, d1, d2				\n\t"	//d0 = d1 * d2; 
+	"vrecpe.f32		q1, q0					\n\t"	//q1 = ~ 1 / q0; 
+	"vrecps.f32		q2, q1, q0				\n\t"	//q2 = 2.0 - q1 * q0; 
+	"vmul.f32		q1, q1, q2				\n\t"	//q1 = q1 * q2; 
+	"vrecps.f32		q2, q1, q0				\n\t"	//q2 = 2.0 - q1 * q0; 
+	"it le \n\t"
+	"ble preloaded\n\t"
+	// preload next input UNLESS we are at the end of the loop
+	"vld1.32 		{d0, d1}, [%0]! 				\n\t"	//q0 = (*x[0], *x[1]), x+=2;
+	"preloaded:	 \n\t"
+	"vmul.f32		q3, q1, q2				\n\t"	//q0 = q1 * q2; 
 
-	//"vmov.i32       q0, #16 \n\t"
-	"vst1.64 		d0, [%2]!				\n\t"	//*r++ = d0;
-	"subs 			%1, %1, #2				\n\t"	//n = n - 2; update flags
+	"vst1.32 		{d6, d7}, [%2]!				\n\t"	//*r++ = q0;
 	"bgt 			lb 						\n\t"	//
 
 	: "+r"(x), "+r"(n), "+r"(y)  // outputs 
 	:
-	: "d0", "d1", "d2", "d3", "r0", "r1", "r2"
+	: "q0", "q1", "q2", "q3", "r0", "r1", "r2"
 );
 #else
 	sqrtfv_c(x, n, r);
