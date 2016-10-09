@@ -105,15 +105,19 @@ void sinfv_neon(float *x, int n, float *y)
 		*y++ = sinf_neon(*x++);
 	}
 	n ^= n&3;
+	if(n == 0)
+		return;
 	asm volatile (
+	"vld1.32 		{d12, d13},[%4] \n\t"	//q14 = {p7, p3, p5, p1}, __sinf_lut
+	"vld1.32 		d14, [%3]		\n\t"	//d14 = {invrange, range}
+// preload first input outside the loop
+	"vld1.32 		{d0, d1}, [%0]!	\n\t"	//q0 = x[0:3]
 // assumes multiples of 4
 	"loop:"
-	"vld1.32 		d14, [%3]		\n\t"	//d14 = {invrange, range}
-	"vld1.32 		{d0, d1}, [%0]!	\n\t"	//q0 = x[0:3]
 	"vabs.f32 		q1, q0			\n\t"	//d1 = {ax, ax}
 
 	"subs			%1, %1, 4       \n\t"
-	"vmul.f32 		q2, q1, d14[0]\n\t"	//q2 = d1 * d14[0] 
+	"vmul.f32 		q2, q1, d14[0] \n\t"	//q2 = d1 * d14[0] 
 	"vcvt.u32.f32 	q2, q2			\n\t"	//q2 = (int) q2
 	"vmov.i32	 	q5, #1			\n\t"	//q5 = 1	
 	"vcvt.f32.u32 	q4, q2			\n\t"	//q4 = (float) q2	
@@ -121,37 +125,28 @@ void sinfv_neon(float *x, int n, float *y)
 	"vmls.f32 		q1, q4, d14[1]	\n\t"	//q1 = q1 - q4 * d14[1]
 	
 	"vand.i32 		q5, q2, q5		\n\t"	//q5 = q2 & q5
-	"vclt.f32 		q15, q0, #0	\n\t"	//q15 = (q0 < 0.0)
-	"vcvt.f32.u32 	q6, q5			\n\t"	//q6 = (float) q5
-	"vmls.f32 		q1, q6, d14[1]	\n\t"	//q1 = q1 - q6 * a23[1]
+	"vclt.f32 		q15, q0, #0		\n\t"	//q15 = (q0 < 0.0)
+	"vcvt.f32.u32 	q14, q5			\n\t"	//q14 = (float) q5
 	"veor.i32 		q5, q5, q8		\n\t"	//q5 = q5 ^ d7	
-	"vmul.f32 		q2, q1, q1		\n\t"	//q2 = q1*q1 = xx = ax * ax
+	"vmls.f32 		q1, q14, d14[1]	\n\t"	//q1 = q1 - q14 * a23[1]
 
-	"vld1.32 		{d14, d15},[%4] \n\t"	//q7 = {p7, p3, p5, p1}, __sinf_lut
 	"veor.i32 		q5, q5, q15		\n\t"	//q5 = q5 ^ q15, n = n ^ m
+	"vmul.f32 		q2, q1, q1		\n\t"	//q2 = q1*q1 = xx = ax * ax
 	"vshl.i32 		q5, q5, #31		\n\t"	//q5 = q5 << 31, n = n << 31
 	"veor.i32 		q1, q1, q5		\n\t"	//q1 = q1 ^ d5, ax = ax ^ n
 	
 	"vmul.f32 		q3, q2, q2		\n\t"	//q3 = q2*q2  = xxxx
-	//ax           q1
-	//xx           q2
-	//xxxx         q3
-	//sinf_lut     q7
-
-	//xxx          q0
 	"vmul.f32 q0, q2, q1\n\t" //q0 = q1 * q2, xxx = xx * ax
-	
-	//a            q4
-	//a = xxx * sinf_lut[0] + ax * sinf_lut[2]
-	//in two steps: 
-	"vmul.f32 q4, q0, d14[0]  \n\t" //q4 = q0 * q7[0], a = xxx * sinf_lut[0]
-	"vmla.f32 q4, q1, d15[0]  \n\t" // q4 += q1 * q7[2], a += ax * sinf_lut[2]
+	"vmul.f32 q4, q0, d12[0]  \n\t" //q4 = q0 * q6[0], a = xxx * sinf_lut[0]
+	"vmul.f32 q5, q0, d12[1] \n\t"  //q5 = q0 * q6[1], b = xxx * sinf_lut[1] 
 
-	//b          q5
-	//b = xxx * sinf_lut[1] + ax * sinf_lut[3]
-	//in two steps:
-	"vmul.f32 q5, q0, d14[1] \n\t"  //q5 = q0 * q7[1], b = xxx * sinf_lut[1] 
-	"vmla.f32 q5, q1, d15[1] \n\t"  //q5 += q1 * q7[3], b += ax * sinf_lut[3] 
+	"it le \n\t"
+	"ble preloaded\n\t"
+	// preload next input UNLESS we are at the end of the loop
+	"vld1.32 		{d0, d1}, [%0]!	\n\t"	//q0 = x[0:3]
+	"preloaded:	 \n\t"
+	"vmla.f32 q4, q1, d13[0]  \n\t" // q4 += q1 * q6[2], a += ax * sinf_lut[2]
+	"vmla.f32 q5, q1, d13[1] \n\t"  //q5 += q1 * q6[3], b += ax * sinf_lut[3] 
 
 	"vmla.f32 q5, q4, q3 \n\t"     //r = b + a * xxxx;
 
@@ -161,7 +156,7 @@ void sinfv_neon(float *x, int n, float *y)
 
 	: "+r"(x), "+r"(n), "+r"(y)  // outputs 
 	: "r"(__sinfv_rng), "r"(__sinfv_lut) // inputs
-	: "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7" //clobber
+	: "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q14", "q15", "cc" //clobber
 	);
 #else
 	sinfv_c(x, n, r);
