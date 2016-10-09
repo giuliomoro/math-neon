@@ -73,7 +73,7 @@ void sqrtfv_c(float *x, int n, float *r)
 
 		//fast inverse approx
 		c0 = a0.f;
-		c0 = a1.f;
+		c1 = a1.f;
 		m0 = 0x3F800000 - (a0.i & 0x7F800000);
 		m1 = 0x3F800000 - (a1.i & 0x7F800000);
 		a0.i = a0.i + m0;
@@ -98,25 +98,20 @@ void sqrtfv_c(float *x, int n, float *r)
 	}
 }
 
-void sqrtfv_neon(float *x, int n, float *r)
+void sqrtfv_neon(float *x, int n, float *y)
 {
+	// take care of the % 4 values
+	for(int k = 0; k < (n&3); ++k){
+		*y++ = sqrtf_neon(*x++);
+	}
+	n ^= n&3;
+	if(n == 0)
+		return;
 #ifdef __MATH_NEON
+	//assumes hard_float, multiples of four
 	asm volatile (
-
-	"tst 			r1, #1 					\n\t"	//r1 & 1
-	"beq 			1f 						\n\t"	//
-
-	"vld1.32		d0[0], [r0]! 			\n\t"	//s0 = *x++
-	"mov 			ip, lr 					\n\t"	//ip = lr
-	//"bl 			sqrtf_neon_hfp 			\n\t"	//sqrtf_neon
-	"mov 			lr, ip 					\n\t"	//lr = ip
-	"vst1.32		d0[0], [r2]! 			\n\t"	//*r++ = r0
-	"subs 			r1, r1, #1				\n\t"	//r1 = r1 - 1;		
-	"bxeq 			lr						\n\t"	//
-
-	"1:				 						\n\t"	//
-
-	"vld1.32 		d0, [r0]! 				\n\t"	//d0 = (*x[0], *x[1]), x+=2;
+	"lb: \n\t"
+	"vld1.32 		d0, [%0]! 				\n\t"	//d0 = (*x[0], *x[1]), x+=2;
 	
 	//fast invsqrt approx
 	"vmov.f32 		d1, d0					\n\t"	//d1 = d0
@@ -135,11 +130,14 @@ void sqrtfv_neon(float *x, int n, float *r)
 	"vrecps.f32		d2, d1, d0				\n\t"	//d2 = 2.0 - d1 * d0; 
 	"vmul.f32		d0, d1, d2				\n\t"	//d0 = d1 * d2; 
 
-	"vst1.64 		d0, [r2]!				\n\t"	//*r++ = d0;
-	"subs 			r1, r1, #2				\n\t"	//n = n - 2; update flags
-	"bgt 			1b 						\n\t"	//
+	//"vmov.i32       q0, #16 \n\t"
+	"vst1.64 		d0, [%2]!				\n\t"	//*r++ = d0;
+	"subs 			%1, %1, #2				\n\t"	//n = n - 2; update flags
+	"bgt 			lb 						\n\t"	//
 
-	::: "d0", "d1", "d2", "d3"
+	: "+r"(x), "+r"(n), "+r"(y)  // outputs 
+	:
+	: "d0", "d1", "d2", "d3", "r0", "r1", "r2"
 );
 #else
 	sqrtfv_c(x, n, r);
