@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-
 void 
 enable_runfast()
 {
@@ -39,4 +38,40 @@ enable_runfast()
 		: "r"(x), "r"(y)
 	);
 #endif
+}
+
+
+void 
+disable_runfast()
+{
+#ifdef __arm__
+	static const unsigned int x = 0x04086060;
+	static const unsigned int y = 0xffffffff - 0x03000000;
+	int r;
+	asm volatile (
+		"fmrx	%0, fpscr			\n\t"	//r0 = FPSCR
+		"and	%0, %0, %1			\n\t"	//r0 = r0 & 0x04086060
+		"and	%0, %0, %2			\n\t"	//r0 = r0 & 0x03000000
+		"fmxr	fpscr, %0			\n\t"	//FPSCR = r0
+		: "=r"(r)
+		: "r"(x), "r"(y)
+	);
+#endif
+}
+
+unsigned int read_fpscr(){
+#ifdef __arm__
+	unsigned int r;
+	asm volatile (
+		"fmrx	%0, fpscr			\n\t"	//r0 = FPSCR
+		: "=r"(r)
+	);
+#endif
+	return r;
+}
+
+int is_runfast(){
+	unsigned int r = read_fpscr();
+	static const unsigned int y = 0x03000000;
+	return ((r &= y) == y);
 }

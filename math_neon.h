@@ -115,12 +115,34 @@ THE SOFTWARE.
 #define dot4_neon		dot4_neon_sfp
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /* 
 function:	enable_runfast
 			this function enables the floating point runfast mode on the 
-			ARM Cortex A8.  	
+			ARM Cortex A8 vfp unit.
 */
 void		enable_runfast();
+
+/* 
+function:	disable_runfast
+			this function disables the floating point runfast mode on the 
+			ARM Cortex A8 vfp unit.
+*/
+void		disable_runfast();
+/* 
+function:	read_fpscr
+			this function reads the fpscr register of the vfp unit on the
+			ARM Cortex A8.
+*/
+unsigned int read_fpscr();
+/* 
+function:	is_runfast
+			this function checks whether the floating point runfast mode on the 
+			ARM Cortex A8 vfp unit is currently active.
+*/
+int is_runfast();
 
 
 float dot2_c(float v0[2], float v1[2]);
@@ -232,6 +254,9 @@ return: 	the sine function evaluated at x[i] radians
 expression: r[i] = sin(x[i])	
 notes:		faster than evaluating individually.
 			r and x can be the same memory location.
+			When compiled with clang sinfv_c performs up to  5% better
+			than sinfv_neon for large vectors, but it is always
+			slower when the vector is shorter than 8.
 */
 void		sinfv_c(float *x, int n, float *r);
 void  		sinfv_neon(float *x, int n, float *r);
@@ -431,5 +456,9 @@ notes:
 float 		invsqrtf_c(float x);
 float 		invsqrtf_neon_hfp(float x);
 float 		invsqrtf_neon_sfp(float x);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif
