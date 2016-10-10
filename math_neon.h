@@ -307,6 +307,18 @@ void  		sinfv_neon(float *x, int n, float *r);
 void		sinfv_c(float *x, int n, float *r);
 
 /**
+function:	sqrtfv
+return: 	the sqrtf function evaluated at x[i]
+expression: r[i] = (x[i])^0.5
+notes:		faster than evaluating individually.
+			r and x can be the same memory location.
+			the _c version is slightly faster but less accurate
+			than the _neon version
+*/
+void		sqrtfv_c(float *x, int n, float *r);
+void  		sqrtfv_neon(float *x, int n, float *r);
+
+/**
 function:	tanf
 
 return: 	the tangent evaluated at x radians.	
@@ -531,6 +543,8 @@ function:	sqrtf
 return: 	(x^0.5)
 
 notes:		 
+			the _c version is slightly faster but less accurate
+			than the _neon version
 */
 float 		sqrtf_neon_hfp(float x);
 float 		sqrtf_c(float x);
