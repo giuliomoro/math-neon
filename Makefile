@@ -1,3 +1,5 @@
+CC=clang
+
 ifeq ($(CC),clang)
   COMPILER_CFLAGS=-no-integrated-as
   BUILD_FOLDER=./build_clang/
@@ -11,8 +13,7 @@ CFLAGS := -O2 -mtune=cortex-a8 -mfloat-abi=hard -mfpu=neon -ansi -std=gnu99 -ftr
 TEST_CFLAGS := -I/usr/xenomai/include
 WARNINGS := -Wall -Wextra -Wno-unused-parameter -Wmissing-prototypes
 WARNINGS=
-ASSEMBLER := -Wa,-mimplicit-it=thumb
-CC=arm-linux-gnueabihf-gcc
+ASSEMBLER := -Wa,-mimplicit-it=arm
 AR=arm-linux-gnueabihf-ar
 
 override CFLAGS += $(WARNINGS) $(ASSEMBLER)
