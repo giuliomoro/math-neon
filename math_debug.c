@@ -35,6 +35,13 @@ THE SOFTWARE.
 #include <sys/resource.h>
 #endif
 
+#define USE_XENOMAI
+
+#ifdef USE_XENOMAI
+#include <native/task.h>
+#include <native/timer.h>
+#endif /* USE_XENOMAI */
+
 #define randf()	(rand() / (RAND_MAX + 1.0f))
 
 
@@ -170,12 +177,18 @@ test_mathfunc1(test1_t *tst)
 	float x;
 	float dx = (tst->rng1 - tst->rng0) / ((float)tst->num);
 #ifndef WIN32
+#ifdef USE_XENOMAI
+	RTIME time;
+#endif
 	struct rusage ru;
 #endif
 
 	tst->emaxabs = tst->xmaxabs = 0;
 	tst->emaxrel = tst->xmaxrel = 0;
 	tst->erms = 0;
+
+	float yRef = 0;
+	float yApp = 0;
 	for(x = tst->rng0; x < tst->rng1 ; x += dx){	
 		float r = (tst->func)((float)x);
 		float rr = (tst->bench)((float)x);
@@ -186,18 +199,25 @@ test_mathfunc1(test1_t *tst)
 			tst->emaxabs = dr;
 			tst->xmaxabs = x;
 		}
-		if (drr > tst->emaxrel){
+		if (drr > tst->emaxrel && r > 0.0000001){
 			tst->emaxrel = drr;
 			tst->xmaxrel = x;
+			yRef = r;
+			yApp = rr;
 		}
 	}
+	//printf("max x: %f, ref: %f, app: %f\n", tst->xmaxrel, yRef, yApp );
 	tst->erms = sqrt(tst->erms / ((float) tst->num));
 	
 #ifdef WIN32
 	tst->time = (1000 * clock()) / (CLOCKS_PER_SEC / 1000);
 #else
+#ifdef USE_XENOMAI
+	time = rt_timer_read();
+#else
 	getrusage(RUSAGE_SELF, &ru);	
 	tst->time = ru.ru_utime.tv_sec * 1000000 + ru.ru_utime.tv_usec;
+#endif
 #endif
 
 	for(x = tst->rng0; x < tst->rng1 ; x += dx){	
@@ -207,8 +227,13 @@ test_mathfunc1(test1_t *tst)
 #ifdef WIN32
 	tst->time = (1000 * clock()) / (CLOCKS_PER_SEC / 1000) - tst->time;
 #else
+#ifdef USE_XENOMAI
+	tst->time = (rt_timer_read() - time ) / 1000;
+	rt_task_sleep(1000000);
+#else
 	getrusage(RUSAGE_SELF, &ru);	
 	tst->time = ru.ru_utime.tv_sec * 1000000 + ru.ru_utime.tv_usec - tst->time;
+#endif
 #endif
 
 }
@@ -225,6 +250,7 @@ test_mathfunc2(test2_t *tst)
 
 	tst->emaxabs = tst->xmaxabs = 0;
 	tst->emaxrel = tst->xmaxrel = 0;
+	float maxY = 0;
 	for(y = (tst->rng0); y < (tst->rng1) ; y += d){	
 		for(x = (tst->rng0); x < (tst->rng1); x += d){	
 			float r = (tst->func)((float)x, y);
@@ -238,9 +264,11 @@ test_mathfunc2(test2_t *tst)
 			if (drr > tst->emaxrel && fabsf(rr) > 0.0001){
 				tst->emaxrel = drr;
 				tst->xmaxrel = x;
+				maxY = y;
 			}
 		}
 	}
+	//printf("xmaxrel: %f, y: %f\n", tst->xmaxrel, maxY);
 	
 #ifdef WIN32
 	tst->time = (1000 * clock()) / (CLOCKS_PER_SEC / 1000) ;
@@ -654,17 +682,13 @@ void test_matrixfunc()
 int main(int argc, char** argv)
 {	
 
+#ifdef USE_XENOMAI
+	rt_task_shadow(NULL, "math-neon test", 95, T_FPU);
+#endif /* USE_XENOMAI */
 	int i, ii;
-	if (argc > 1 && strcmp(argv[1], "-norunfast") == 0){
-		printf("RUNFAST: Disabled \n");
-	}else {
-		printf("RUNFAST: Enabled \n");
-		enable_runfast();
-	}
-
 	srand(time(NULL));
 
-#if 1
+#if 0
 	//test single argument functions:
 	printf("------------------------------------------------------------------------------------------------------\n");	
 	printf("MATRIX FUNCTION TESTS \n");	
@@ -673,39 +697,69 @@ int main(int argc, char** argv)
 	test_matrixfunc();
 	test_vectorfunc();
 
+#endif
+#if 1
 	printf("------------------------------------------------------------------------------------------------------\n");	
 	printf("CMATH FUNCTION TESTS \n");	
 	printf("------------------------------------------------------------------------------------------------------\n");	
-	printf("Function\tRange\t\tNumber\tABS Max Error\tREL Max Error\tRMS Error\tTime\tRate\n");	
+	printf("Function\t|Range\t|\t|Number\t|ABS Max Err\t|REL Max Err(%)\t|RMS Err\t|Time\t|Rate\n");	
 	printf("------------------------------------------------------------------------------------------------------\n");	
 	for(i = 0; i < 51; i++){
+		if(i % 3 == 0){
+			disable_runfast();
+			if(is_runfast()){
+				fprintf(stderr, "ERROR: vfp unexpectedly set to runfast\n");
+				exit(1);
+			}
+				
+		} else if(i % 3 == 1){
+			enable_runfast();
+			if(!is_runfast()){
+				fprintf(stderr, "ERROR: vfp unexpectedly not set to runfast\n");
+				exit(1);
+			}
+			test1[i].name = test1[i - 1].name;
+			test1[i].func = test1[i - 1].func;
+		}
 		test_mathfunc1(&test1[i]);	
 		
 		ii = i - (i % 3);
-		printf("%s\t", test1[i].name);
-		printf("%.2f, %.2f\t", test1[i].rng0, test1[i].rng1);
-		printf("%i\t", test1[i].num);
-		printf("%12.8f\t", test1[i].emaxabs);
-		printf("%12.8f\t", test1[i].emaxrel);
-		printf("%12.8f\t", test1[i].erms);
-		printf("%i\t", test1[i].time);
-		printf("%.2f\t", (float)test1[ii].time / test1[i].time);
-		printf(";\n");
+		printf("%s%s\t|", test1[i].name, (i%3==1) ? "f" : "");
+		printf("%.2f, %.2f\t|", test1[i].rng0, test1[i].rng1);
+		printf("%i\t|", test1[i].num);
+		printf("%12.8f\t|", test1[i].emaxabs);
+		printf("%12.8f\t|", test1[i].emaxrel);
+		printf("%12.8f\t|", test1[i].erms);
+		printf("%i\t|", test1[i].time);
+		printf("%.2f\t|", (float)test1[ii].time / test1[i].time);
+		printf("\n");
+		if(i%3 == 2)
+			printf("\n");
 	}
 	for(i = 0; i < 9; i++){
+		if(i % 3 == 0){
+			disable_runfast();
+		} else if(i % 3 == 1){
+			enable_runfast();
+			test2[i].name = test2[i - 1].name;
+			test2[i].func = test2[i - 1].func;
+		}
+
 		test_mathfunc2(&test2[i]);
 	
 		ii = i - (i % 3);
 		
-		printf("%s\t", test2[i].name);
-		printf("%.2f, %.2f\t", test2[i].rng0, test2[i].rng1);
-		printf("%i\t", test2[i].num);
-		printf("%12.8f\t", test2[i].emaxabs);
-		printf("%12.8f\t", test2[i].emaxrel);
-		printf("%12.8f\t", test2[i].erms);
-		printf("%i\t", test2[i].time);
-		printf("%.2f\t", (float)test2[ii].time / test2[i].time);
-		printf(";\n");
+		printf("%s%s\t|", test2[i].name, (i%3==1) ? "f" : "");
+		printf("%.2f, %.2f\t|", test2[i].rng0, test2[i].rng1);
+		printf("%i\t|", test2[i].num);
+		printf("%12.8f\t|", test2[i].emaxabs);
+		printf("%12.8f\t|", test2[i].emaxrel);
+		printf("%12.8f\t|", test2[i].erms);
+		printf("%i\t|", test2[i].time);
+		printf("%.2f\t|", (float)test2[ii].time / test2[i].time);
+		printf("\n");
+		if(i%3 == 2)
+			printf("\n");
 	}
 	
 #else

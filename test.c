@@ -108,18 +108,77 @@ float (*metrics[numMetrics])(float**, unsigned int) = {
 };
 
 int main(){
+
+	float a[10] = {1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5};
+	float out_c[10];
+	float out_neon[10];
+	sqrtfv_c(a, 10, out_c);
+	sqrtfv_neon(a, 10, out_neon);
+	if(1)
+	for(int n = 0; n < 10; ++n){
+		printf("%12.7f\n", out_c[n]);
+		printf("%12.7f\n", out_neon[n]);
+		printf("%12.7f\n", sqrtf_c(a[n]));
+		printf("%12.7f\n", sqrtf_neon(a[n]));
+		printf("%12.7f\n", sqrtf(a[n]));
+		printf("\n");
+	}
+
+
 #ifdef USE_XENOMAI
 	rt_task_shadow(NULL, "math-neon test", 95, T_FPU);
 #endif /* USE_XENOMAI */
 	//enable_runfast();	
-	const unsigned int testLength = 500000;
+	const unsigned int testLength = 500001;
 	float x[testLength];
 	float y1[testLength];
 	float y2[testLength];
 	float* y[2] = {y1, y2};
 	for(unsigned int n = 0; n < testLength; ++n){
-		x[n] = 0.0001 + n / (float)testLength * (1 - 0.0001);
+		//x[n] = -M_PI + n / (float)testLength * (2 * M_PI - 0.0001);
+		x[n] = 1 + n / (float)testLength * 1000;
 	}
+	int numTrials = 10;
+	enable_runfast();
+
+	RTIME time;
+	time = rt_timer_read();
+	for(int n = 0; n < numTrials; ++n){
+		//sinfv_c(x, testLength, y1);
+		sqrtfv_c(x, testLength, y1);
+	}
+	printf("Elapsed c: %.4f\n", ((rt_timer_read() - time)/100000) / 10000.f);
+
+	rt_task_sleep(1000000);
+	time = rt_timer_read();
+	for(int n = 0; n < numTrials; ++n){
+		//sinfv_neon(x, testLength, y2);
+		sqrtfv_neon(x, testLength, y2);
+	}
+	printf("Elapsed neon: %.4f\n", ((rt_timer_read() - time)/100000) / 10000.f);
+	rt_task_sleep(1000000);
+	
+	int failed = 0;
+	for(unsigned int n = 0; n < testLength; ++n){
+		float lib = y1[n];
+		float neon = y2[n];
+		float precise = sqrtf(x[n]);
+		float err = fabsf(precise - neon);
+		float err2 = fabsf(precise - lib);
+		if( err > 0.00001 || err2 > 0.01){
+			printf("[%d]%.5f      c:%12.7f nv:%12.7f n:%12.7f err:%0.4f\n", n, precise, lib, neon, sqrtf(x[n]), err2);
+			++failed;
+			if(failed > 10){
+				printf("Too many errors, stopping\n");
+				exit(1);
+			}
+		}
+	}
+	printf("%s\n", failed ? "FAILED" : "Success");
+
+
+
+	return 0;
 	printf( "     func   maxAbs      maxRel      rms      t-c   t-neon\n");
 	for(unsigned int n = 0; n < numFuncs; n += 2){
 		float (*math[2])(float);
