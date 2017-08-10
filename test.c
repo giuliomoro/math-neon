@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <math_neon.h>
 #include <math.h>
 #define USE_XENOMAI
@@ -10,30 +11,30 @@
 
 #define numFuncs 40*2
 float (*funcs[numFuncs])(float) = {
-	sinf, sinf_neon,
-	cosf, cosf_neon,		
-	//sincosf, sincosf_neon,
-	tanf, tanf_neon,
-	atanf, atanf_neon,
-	//atan2f, atan2f_neon,
-	asinf, asinf_neon,
-	acosf, acosf_neon,
-	sinhf, sinhf_neon,
-	coshf, coshf_neon,
-	tanhf, tanhf_neon,
-	expf, expf_neon,
-	logf, logf_neon,
-	log10f, log10f_neon,
-	//powf, powf_neon,
-	floorf, floorf_neon,
-	ceilf, ceilf_neon,
-	fabsf, fabsf_neon,
-	//ldexpf, ldexpf_neon,
-	//frexpf, frexpf_neon,
-	//fmodf, fmodf_neon,
-	//modf, modf_neon,
-	sqrtf, sqrtf_neon
-	//invsqrtf, invsqrtf_neon,
+	sinf, sinf_c, sinf_neon,
+	cosf, cosf_c, cosf_neon,
+	//sincosf, sincosf_c, sincosf_neon,
+	tanf, tanf_c, tanf_neon,
+	atanf, atanf_c, atanf_neon,
+	atan2f, atan2f_c, atan2f_neon,
+	asinf, asinf_c, asinf_neon,
+	acosf, acosf_c, acosf_neon,
+	sinhf, sinhf_c, sinhf_neon,
+	coshf, coshf_c, coshf_neon,
+	tanhf, tanhf_c, tanhf_neon,
+	expf, expf_c, expf_neon,
+	logf, logf_c, logf_neon,
+	log10f, log10f_c, log10f_neon,
+	powf, powf_c, powf_neon,
+	floorf, floorf_c, floorf_neon,
+	ceilf, ceilf_c, ceilf_neon,
+	fabsf, fabsf_c, fabsf_neon,
+	ldexpf, ldexpf_c, ldexpf_neon,
+	//frexpf, frexpf_c, frexpf_neon,
+	fmodf, fmodf_c, fmodf_neon,
+	modf, modf_c, modf_neon,
+	sqrtf, sqrtf_c, sqrtf_neon
+	//invsqrtf, invsqrtf_c, invsqrtf_neon,
 };
 
 char* funcNames[numFuncs]={
@@ -42,7 +43,7 @@ char* funcNames[numFuncs]={
 	//"sincosf",
 	"tanf",
 	"atanf",
-	//"atan2f",
+	"atan2f",
 	"asinf",
 	"acosf",
 	"sinhf",
@@ -51,14 +52,14 @@ char* funcNames[numFuncs]={
 	"expf",
 	"logf",
 	"log10f",
-	//"powf",
+	"powf",
 	"floorf",
 	"ceilf",
 	"fabsf",
-	//"ldexpf",
+	"ldexpf",
 	//"frexpf",
-	//"fmodf",
-	//"modf",
+	"fmodf",
+	"modf",
 	"sqrtf",
 	//"invsqrtf",
 };
@@ -111,21 +112,22 @@ int main(){
 #ifdef USE_XENOMAI
 	rt_task_shadow(NULL, "math-neon test", 95, T_FPU);
 #endif /* USE_XENOMAI */
-	//enable_runfast();	
+	enable_runfast();
+	unsigned int numTestTypes = 3; // libmath, _, _neon
 	const unsigned int testLength = 500000;
 	float x[testLength];
-	float y1[testLength];
-	float y2[testLength];
-	float* y[2] = {y1, y2};
+	float* y[numTestTypes];
+	for(unsigned int n = 0; n < numTestTypes; ++n)
+		y[n] = (float*)malloc(testLength * sizeof(float));
 	for(unsigned int n = 0; n < testLength; ++n){
 		x[n] = 0.0001 + n / (float)testLength * (1 - 0.0001);
 	}
-	printf( "     func   maxAbs      maxRel      rms      t-c   t-neon\n");
-	for(unsigned int n = 0; n < numFuncs; n += 2){
-		float (*math[2])(float);
+	printf( "     func        maxAbs          maxRel          rms        t-lib  t-c    t-neon\n");
+	for(unsigned int n = 0; n < numFuncs; n += numTestTypes){
+		float (*math[numTestTypes])(float);
 		int skip = 0;
-		RTIME elapsed[2];
-		for(unsigned int j = 0; j < 2; ++j){
+		RTIME elapsed[numTestTypes];
+		for(unsigned int j = 0; j < numTestTypes; ++j){
 			math[n] = funcs[n + j];
 			if(math[n] == NULL){
 				skip = 1;
@@ -142,14 +144,16 @@ int main(){
 		}
 		if(skip == 1)
 			break;
-		printf("%10s ", funcNames[n/2]);
+		printf("%10s ", funcNames[n/numTestTypes]);
 		for(unsigned int j = 0; j < numMetrics; ++j){
-			printf(" %.8f",  metrics[j](y, testLength));
+			printf(" %15.8f",  metrics[j](y, testLength));
 		}
-		for(unsigned int j = 0; j < 2; ++j){
+		for(unsigned int j = 0; j < numTestTypes; ++j){
 			printf(" %.3fs", (elapsed[j] / 1e6) / (float)1000);
 		}
 		printf("\n");
 	}
+	for(unsigned int n = 0; n < numTestTypes; ++n)
+		free(y[n]);
 }
 
