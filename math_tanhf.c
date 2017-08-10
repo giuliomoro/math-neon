@@ -51,11 +51,11 @@ float tanhf_c(float x)
 	xx.i = xx.i + m;
 	xx.f = 1.41176471f - 0.47058824f * xx.f;
 	xx.i = xx.i + m;
-	b = 2.0 - xx.f * c;
+	b = 2.f - xx.f * c;
 	xx.f = xx.f * b;	
-	b = 2.0 - xx.f * c;
+	b = 2.f - xx.f * c;
 	xx.f = xx.f * b;
-	c = a - 1.0;
+	c = a - 1.f;
 	xx.f *= c;
 	return xx.f;
 }
