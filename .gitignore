@@ -5,6 +5,7 @@
 .*.swp
 .*.swo
 *.a
+*.so
 build*/
 test_*
 math_debug_*
