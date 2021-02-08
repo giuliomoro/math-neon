@@ -21,16 +21,18 @@ LIBS := -lm
 
 lib: libmathneon.a libmathneon.so
 
-C_SRCS := $(filter-out math_debug.c,$(wildcard *.c))
-C_SRCS := $(filter-out test.c,$(wildcard *.c))
+C_SRCS := $(filter-out math_debug.c,$(wildcard math_*.c))
 C_OBJS := $(addprefix $(BUILD_FOLDER),$(notdir $(C_SRCS:.c=.o)))
 C_OBJS_PIC := $(addprefix $(BUILD_FOLDER),$(notdir $(C_SRCS:.c=.pic.o)))
 C_DEPS := $(addprefix $(BUILD_FOLDER),$(notdir $(C_SRCS:.c=.d)))
 
 libmathneon.a: $(C_OBJS)
+	@nm -a $(C_OBJS) | grep main && { echo "Error: there is a main() among the library objects" >&2 ; return 1; } || return 0
+	ar rcs $@ $^
 
 libmathneon.so: $(C_OBJS_PIC)
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libmathneon.so -o $@
+	@nm -a $(C_OBJS_PIC) | grep main && { echo "Error: there is a main() among the library objects" >&2 ; return 1; } || return 0
+	$(CC) $(LDFLAGS) $(C_OBJS_PIC) -shared -Wl,-soname,libmathneon.so -o $@
 
 SRCS = $(wildcard *.c)
 OBJS= $(addprefix $(BUILD_FOLDER),$(notdir $(SRCS:.c=.o)))
@@ -65,3 +67,5 @@ clean:
 install:
 	cp libmathneon.a libmathneon.so /usr/lib/
 	cp math_neon.h /usr/include/
+
+.PHONY: libcheck
