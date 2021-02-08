@@ -19,7 +19,9 @@ AR=arm-linux-gnueabihf-ar
 override CFLAGS += $(WARNINGS) $(ASSEMBLER)
 LIBS := -lm 
 
-lib: libmathneon.a libmathneon.so
+SOLIB_EXT :=so.1
+
+lib: libmathneon.a libmathneon.$(SOLIB_EXT)
 
 C_SRCS := $(filter-out math_debug.c,$(wildcard math_*.c))
 C_OBJS := $(addprefix $(BUILD_FOLDER),$(notdir $(C_SRCS:.c=.o)))
@@ -30,9 +32,9 @@ libmathneon.a: $(C_OBJS)
 	@nm -a $(C_OBJS) | grep main && { echo "Error: there is a main() among the library objects" >&2 ; return 1; } || return 0
 	ar rcs $@ $^
 
-libmathneon.so: $(C_OBJS_PIC)
+libmathneon.$(SOLIB_EXT): $(C_OBJS_PIC)
 	@nm -a $(C_OBJS_PIC) | grep main && { echo "Error: there is a main() among the library objects" >&2 ; return 1; } || return 0
-	$(CC) $(LDFLAGS) $(C_OBJS_PIC) -shared -Wl,-soname,libmathneon.so -o $@
+	$(CC) $(LDFLAGS) $(C_OBJS_PIC) -shared -Wl,-soname,libmathneon.$(SOLIB_EXT) -o $@
 
 SRCS = $(wildcard *.c)
 OBJS= $(addprefix $(BUILD_FOLDER),$(notdir $(SRCS:.c=.o)))
@@ -65,7 +67,8 @@ clean:
 	$(RM) math_debug $(BUILD_FOLDER)*.o *.a
 
 install:
-	cp libmathneon.a libmathneon.so /usr/lib/
-	cp math_neon.h /usr/include/
+	install libmathneon.a libmathneon.$(SOLIB_EXT) /usr/lib/
+	cd /usr/lib && rm -rf libmathneon.so && ln -s libmathneon.$(SOLIB_EXT) libmathneon.so
+	install math_neon.h /usr/include/
 
 .PHONY: libcheck
