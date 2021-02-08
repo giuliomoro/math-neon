@@ -146,8 +146,8 @@ float powf_neon_hfp(float x, float n)
 
 	//Range Reduction:
 	"vmul.f32 		d6, d0, d7[0]			\n\t"	//d6 = d0 * d7[0] 
-	"vcvt.u32.f32 	d6, d6					\n\t"	//d6 = (int) d6
-	"vcvt.f32.u32 	d1, d6					\n\t"	//d1 = (float) d6
+	"vcvt.s32.f32 	d6, d6					\n\t"	//d6 = (int) d6
+	"vcvt.f32.s32 	d1, d6					\n\t"	//d1 = (float) d6
 	"vmls.f32 		d0, d1, d7[1]			\n\t"	//d0 = d0 - d1 * d7[1]
 		
 	//polynomial:
@@ -162,9 +162,8 @@ float powf_neon_hfp(float x, float n)
 	"vshl.i32 		d6, d6, #23				\n\t"	//d6 = d6 << 23		
 	"vadd.i32 		d0, d2, d6				\n\t"	//d0 = d2 + d6		
 
-
 	:: "r"(__powf_rng), "r"(__powf_lut) 
-    : "d0", "d1", "d2","d3", "d4", "d5", "d6", "d7"
+    : "d0", "d1", "d2","d3", "d4", "d5", "d6", "d7", "d16"
 	);
 #endif
 }
