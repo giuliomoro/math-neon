@@ -152,9 +152,9 @@ test2_t test2[9] =
 	{"atan2f_c     ", 	atan2f_c, 	atan2f, 0.1, 		10, 	10000, 0, 0, 0},
 	{"atan2f_neon  ", 	atan2f_neon,atan2f, 0.1, 		10, 	10000, 0, 0, 0},
 	
-	{"powf       ", 	powf, 		powf, 	1, 			10, 	10000, 0, 0, 0},
-	{"powf_c     ", 	powf_c, 	powf, 	1, 			10, 	10000, 0, 0, 0},
-	{"powf_neon  ", 	powf_neon, 	powf, 	1, 			10, 	10000, 0, 0, 0},
+	{"powf       ", 	powf, 		powf, 	0.01, 			10, 	10000, 0, 0, 0},
+	{"powf_c     ", 	powf_c, 	powf, 	0.01, 			10, 	10000, 0, 0, 0},
+	{"powf_neon  ", 	powf_neon, 	powf, 	0.01, 			10, 	10000, 0, 0, 0},
 
 	{"fmodf       ", 	fmodf, 		fmodf, 	1, 			10, 	10000, 0, 0, 0},
 	{"fmodf_c     ", 	fmodf_c, 	fmodf, 	1, 			10, 	10000, 0, 0, 0},
