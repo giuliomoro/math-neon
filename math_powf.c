@@ -34,6 +34,12 @@ RMS  Error: ~0.0002%
 #include "math.h"
 #include "math_neon.h"
 
+#ifndef __OPTIMIZE__
+#ifdef __MATH_NEON
+#error The inline assembly in this file (and the others) won't work without -O2 because the "return value" gets overwritten
+#endif
+#endif
+
 const float __powf_rng[2] = {
 	1.442695041f,
 	0.693147180f
